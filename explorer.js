@@ -112,8 +112,8 @@ async function loadStats() {
     },
     {
       label: 'DFC Price',
-      value: m ? fmtPrice(m.priceUsd) : '—',
-      sub:   m ? `24h: ${pct(m.change24h)} | Vol $${fmt(m.volumeUsd24h, 0)}` : '',
+      value: (m && m.available !== false) ? fmtPrice(m.priceUsd ?? m.price) : 'Unavailable',
+      sub:   (m && m.available !== false && m.change24h != null) ? `24h: ${pct(m.change24h)} | Vol $${fmt(m.volumeUsd24h, 0)}` : 'No exchange source',
     },
     {
       label: 'Masternodes',
@@ -154,8 +154,10 @@ async function loadStats() {
     qs('#tickPeers').textContent   = `Peers: ${s.connections}`;
     qs('#tickSupply').textContent  = `Supply: ${fmtSupply(s.supply?.circulating)}`;
   }
-  if (m) {
-    qs('#tickPrice').textContent = `DFC: ${fmtPrice(m.priceUsd)} (${m.change24h >= 0 ? '+' : ''}${Number(m.change24h).toFixed(2)}%)`;
+  if (m && m.available !== false) {
+    qs('#tickPrice').textContent = `DFC: ${fmtPrice(m.priceUsd ?? m.price)} (${m.change24h >= 0 ? '+' : ''}${Number(m.change24h).toFixed(2)}%)`;
+  } else {
+    qs('#tickPrice').textContent = 'DFC: no market data';
   }
 }
 
@@ -225,7 +227,7 @@ async function loadTxs() {
 
 async function loadRichList() {
   const res  = await get('/richlist?page=1&limit=10');
-  const list = res?.data ?? res;
+  const list = Array.isArray(res) ? res : (res?.data ?? []);
   const tbody = qs('#richBody');
 
   if (!Array.isArray(list) || list.length === 0) {
@@ -236,13 +238,12 @@ async function loadRichList() {
   tbody.innerHTML = list.map((entry, i) => {
     const addr    = entry.address ?? '—';
     const balance = entry.balance ?? entry.amount ?? null;
-    const share   = entry.percentage ?? entry.share ?? null;
+    const rank    = entry.rank ?? (i + 1);
     return `
       <tr class="clickable" data-type="address" data-id="${addr}">
-        <td class="text-muted">${i + 1}</td>
-        <td class="mono small"><a href="#" onclick="return false">${fmtShort(addr, 18)}</a></td>
+        <td class="text-muted">${rank}</td>
+        <td class="mono small"><a href="#" onclick="return false">${fmtShort(addr, 20)}</a></td>
         <td class="mono small text-ok">${balance != null ? fmt(balance, 2) : '—'} DFC</td>
-        <td class="text-muted">${share != null ? Number(share).toFixed(4) + '%' : '—'}</td>
       </tr>`;
   }).join('');
 
@@ -254,15 +255,23 @@ async function loadRichList() {
 async function loadMarket() {
   const m = await get('/market');
   const g = qs('#marketGrid');
-  if (!m) { g.innerHTML = '<p class="tloading">No market data</p>'; return; }
+  if (!m || m.available === false) {
+    g.innerHTML = `
+      <div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--muted)">
+        <div style="font-size:1.8rem;margin-bottom:8px">📊</div>
+        <div style="font-weight:600">Market data unavailable</div>
+        <div style="font-size:0.78rem;margin-top:4px">No exchange data source configured</div>
+      </div>`;
+    return;
+  }
 
   const items = [
-    { label: 'Price (USD)', value: fmtPrice(m.priceUsd), sub: `24h: ${pct(m.change24h)}` },
+    { label: 'Price (USD)', value: fmtPrice(m.priceUsd ?? m.price), sub: m.change24h != null ? `24h: ${pct(m.change24h)}` : '' },
     { label: 'Price (BTC)',  value: m.priceBtc ? `₿${Number(m.priceBtc).toFixed(8)}` : '—', sub: '' },
     { label: 'Market Cap',   value: m.marketCapUsd ? `$${fmt(m.marketCapUsd, 0)}` : '—', sub: '' },
     { label: 'Volume 24h',   value: m.volumeUsd24h ? `$${fmt(m.volumeUsd24h, 0)}` : '—', sub: '' },
     { label: 'ATH',          value: m.ath ? fmtPrice(m.ath) : '—', sub: m.athDate ? m.athDate.slice(0, 10) : '' },
-    { label: 'Rank',         value: m.rank ? `#${m.rank}` : '—', sub: 'CoinGecko' },
+    { label: 'Rank',         value: m.rank ? `#${m.rank}` : '—', sub: m.source ?? 'CoinGecko' },
   ];
 
   g.innerHTML = items.map(it => `
@@ -315,7 +324,7 @@ async function doSearch(q) {
   try {
     const result = await get(`/search?q=${encodeURIComponent(q)}`);
     const type   = result?.type ?? 'result';
-    const data   = result?.data ?? result;
+    const data   = result?.result ?? result?.data ?? result;
     section.innerHTML = `
       <h2>Search result &mdash; <span class="chip">${type}</span></h2>
       <pre class="detail-pre">${JSON.stringify(data, null, 2)}</pre>
