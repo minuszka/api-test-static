@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeFCoN API Teszt</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>DeFCoN Explorer &mdash; API Tesztoldal</h1>
+        <p>
+          Sorban lefuttatja az osszes API endpointot. A progressz sor mutatja,
+          eppen melyik endpoint olvasasa tortenik. Az address, block hash es txid
+          automatikusan kerulnek felderiteseere az elso sikeres valaszbol.
+        </p>
+      </section>
+
+      <section class="controls card">
+        <div class="control-group">
+          <label for="baseUrl">API base URL</label>
+          <input id="baseUrl" type="text" spellcheck="false" />
+          <small class="hint">
+            Pelda: <code>https://deftrack.xyz/api</code> vagy <code>http://localhost:3001/api</code>
+          </small>
+        </div>
+
+        <div class="control-group">
+          <label for="addressInput">Address (automatikus felderites, vagy kezi)</label>
+          <input id="addressInput" type="text" spellcheck="false" placeholder="Automatikus felderites a richlistbol" />
+        </div>
+
+        <div class="control-group">
+          <label for="blockHashInput">Block hash / magassag (automatikus felderites, vagy kezi)</label>
+          <input id="blockHashInput" type="text" spellcheck="false" placeholder="Automatikus felderites a legfrissebb blokk alapjan" />
+        </div>
+
+        <div class="control-group">
+          <label for="txidInput">Tranzakcio ID (automatikus felderites, vagy kezi)</label>
+          <input id="txidInput" type="text" spellcheck="false" placeholder="Automatikus felderites a legfrissebb tranzakciobol" />
+        </div>
+
+        <div class="actions">
+          <button id="runButton" type="button">API-k ujraolvasasa</button>
+        </div>
+      </section>
+
+      <section class="status card">
+        <div class="row">
+          <strong>Allapot:</strong>
+          <span id="runStatus">Varakozas inditasra.</span>
+        </div>
+        <div class="row">
+          <strong>Eppen olvasas alatt:</strong>
+          <span id="currentEndpoint">-</span>
+        </div>
+        <div class="row">
+          <strong>Sikeres / hibas / kihagyott:</strong>
+          <span id="summary">0 / 0 / 0</span>
+        </div>
+      </section>
+
+      <section class="results">
+        <h2>API eredmenyek</h2>
+        <div id="resultsList" class="results-list"></div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

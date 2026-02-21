@@ -1,0 +1,9 @@
+services:
+  - type: static
+    name: defcon-api-tester
+    buildCommand: ""
+    staticPublishPath: .
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
