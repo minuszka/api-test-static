@@ -206,7 +206,7 @@ async function loadTxs() {
 
   tbody.innerHTML = txs.map(tx => {
     const txid  = tx.txid ?? tx.hash ?? '';
-    const age   = fmtAge(tx.time ?? tx.timestamp ?? tx.blockTime);
+    const age   = fmtAge(tx.time ?? tx.timestamp ?? tx.blocktime ?? tx.blockTime);
     const ins   = tx.vin?.length ?? tx.inputs  ?? tx.vinCount  ?? '—';
     const outs  = tx.vout?.length ?? tx.outputs ?? tx.voutCount ?? '—';
     const amt   = tx.totalValueOut ?? tx.valueOut ?? tx.totalOut ?? tx.amount ?? tx.value ?? null;
