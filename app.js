@@ -18,7 +18,7 @@ const ENDPOINTS = [
   { method: 'GET', group: 'Address',     path: '/address/:address/txs', query: { page: '1', limit: '5' } },
   { method: 'GET', group: 'Market',      path: '/market' },
   { method: 'GET', group: 'Market',      path: '/market/history', query: { days: '30' } },
-  { method: 'GET', group: 'Search',      path: '/search', query: { q: 'defcon' } },
+  { method: 'GET', group: 'Search',      path: '/search', query: { q: '1' } },
 ];
 
 const dom = {
@@ -58,10 +58,10 @@ function createResultCard(index, endpoint) {
     <div class="result-head">
       <span class="endpoint-number">#${index + 1}</span>
       <span class="endpoint-path">${endpoint.method} ${endpoint.path}</span>
-      <span class="badge pending">Varakozik</span>
+      <span class="badge pending">Pending</span>
     </div>
-    <div class="result-meta">Csoport: ${endpoint.group}</div>
-    <div class="response-box"><pre>Meg nincs lefuttatva.</pre></div>
+    <div class="result-meta">Group: ${endpoint.group}</div>
+    <div class="response-box"><pre>Not yet executed.</pre></div>
   `;
   return card;
 }
@@ -118,18 +118,18 @@ async function probeBase(baseV1) {
 
 function describeProbeFailure(probe, baseV1) {
   if (!probe) {
-    return `Nem sikerult elerni a base URL-t: ${baseV1}`;
+    return `Could not reach the base URL: ${baseV1}`;
   }
 
   if (probe.status === 0) {
-    return `Nem erheto el az API (${baseV1}). Ellenorizd az URL-t vagy a CORS bedallitasokat.`;
+    return `API unreachable at ${baseV1}. Check the URL or CORS configuration.`;
   }
 
   if (looksLikeStatic404(probe.status, probe.body)) {
-    return `A megadott URL nem az API-ra mutat (${baseV1}), hanem statikus fajlszerverre.`;
+    return `The provided URL does not point to the API (${baseV1}) — it appears to be a static file server.`;
   }
 
-  return `A /stats probe hibas valaszt adott (HTTP ${probe.status}) ezen: ${baseV1}`;
+  return `/stats probe returned an error (HTTP ${probe.status}) at: ${baseV1}`;
 }
 
 async function chooseBaseUrl(baseV1) {
@@ -151,7 +151,7 @@ async function chooseBaseUrl(baseV1) {
         baseV1: candidate,
         switched: candidate !== normalized,
         probeOk: true,
-        reason: candidate !== normalized ? 'Relative URL helyett localhost API lett hasznalva.' : '',
+        reason: candidate !== normalized ? 'Relative URL overridden — using localhost API fallback.' : '',
       };
     }
 
@@ -254,7 +254,7 @@ async function fetchOne(baseV1, endpoint, params) {
 
 async function runAll() {
   dom.runButton.disabled = true;
-  dom.runStatus.textContent = 'Kapcsolat ellenorzese...';
+  dom.runStatus.textContent = 'Checking connection...';
   dom.currentEndpoint.textContent = '-';
   dom.summary.textContent = `0 / 0 / 0`;
 
@@ -262,8 +262,8 @@ async function runAll() {
   const baseV1 = resolvedBase.baseV1;
   dom.baseUrl.value = baseV1;
   dom.runStatus.textContent = resolvedBase.probeOk
-    ? (resolvedBase.reason ? `API hivasok futnak... ${resolvedBase.reason}` : 'API hivasok futnak...')
-    : `Inditasi hiba: ${resolvedBase.reason}`;
+    ? (resolvedBase.reason ? `Running API calls... ${resolvedBase.reason}` : 'Running API calls...')
+    : `Startup error: ${resolvedBase.reason}`;
   dom.resultsList.innerHTML = '';
 
   const cards = ENDPOINTS.map((endpoint, index) => {
@@ -274,11 +274,11 @@ async function runAll() {
 
   if (!resolvedBase.probeOk) {
     for (let i = 0; i < cards.length; i += 1) {
-      setCardState(cards[i], 'pending', 'Kihagyva');
+      setCardState(cards[i], 'pending', 'Skipped');
       updateCardResponse(
         cards[i],
-        `Kihagyva | API nem erheto el`,
-        `${resolvedBase.reason}\n\nTipp: ellenorizd az API URL-t a fenti mezoben.`
+        `Skipped | API unreachable`,
+        `${resolvedBase.reason}\n\nTip: verify the API base URL in the field above.`
       );
     }
     dom.currentEndpoint.textContent = '-';
@@ -337,16 +337,16 @@ async function runAll() {
     const endpoint = ENDPOINTS[i];
     const card = cards[i];
     dom.currentEndpoint.textContent = `API #${i + 1}: ${endpoint.method} ${endpoint.path}`;
-    setCardState(card, 'running', 'Fut');
+    setCardState(card, 'running', 'Running');
 
     const missing = missingParamKey(endpoint.path, params);
     if (missing) {
       skippedCount += 1;
-      setCardState(card, 'pending', 'Kihagyva');
+      setCardState(card, 'pending', 'Skipped');
       updateCardResponse(
         card,
-        `Kihagyva | hianyzik a kotelezo parameter: ${missing}`,
-        `Add meg kezzel a(z) ${missing} erteket fent, majd futtasd ujra.`
+        `Skipped | missing required parameter: ${missing}`,
+        `Provide the "${missing}" value manually in the field above, then re-run.`
       );
       dom.summary.textContent = `${okCount} / ${badCount} / ${skippedCount}`;
       continue;
@@ -354,7 +354,7 @@ async function runAll() {
 
     try {
       const result = await fetchOne(baseV1, endpoint, params);
-      const statusText = `${result.ok ? 'Sikeres' : 'Hibas'} valasz | HTTP ${result.status} | ${result.elapsedMs} ms | ${result.url}`;
+      const statusText = `${result.ok ? 'Success' : 'Error'} | HTTP ${result.status} | ${result.elapsedMs} ms | ${result.url}`;
       updateCardResponse(card, statusText, prettyPrint(result.body));
 
       if (result.ok) {
@@ -362,23 +362,23 @@ async function runAll() {
         setCardState(card, 'ok', 'OK');
       } else {
         badCount += 1;
-        setCardState(card, 'bad', 'Hiba');
+        setCardState(card, 'bad', 'Error');
       }
     } catch (error) {
       badCount += 1;
       const message = error && error.message ? error.message : String(error);
       updateCardResponse(
         card,
-        `Hibas valasz | kapcsolat/fetch hiba`,
+        `Error | network / fetch failure`,
         message
       );
-      setCardState(card, 'bad', 'Hiba');
+      setCardState(card, 'bad', 'Error');
     }
 
     dom.summary.textContent = `${okCount} / ${badCount} / ${skippedCount}`;
   }
 
-  dom.runStatus.textContent = 'Kesz. Minden API endpoint feldolgozva.';
+  dom.runStatus.textContent = 'Done. All API endpoints processed.';
   dom.currentEndpoint.textContent = '-';
   dom.runButton.disabled = false;
 }
@@ -387,7 +387,7 @@ function init() {
   dom.baseUrl.value = getDefaultBaseUrl();
   dom.runButton.addEventListener('click', runAll);
   runAll().catch(() => {
-    dom.runStatus.textContent = 'Hiba tortent futas kozben.';
+    dom.runStatus.textContent = 'An unexpected error occurred during execution.';
     dom.currentEndpoint.textContent = '-';
     dom.runButton.disabled = false;
   });
