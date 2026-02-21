@@ -3,6 +3,19 @@ services:
     name: defcon-api-tester
     buildCommand: ""
     staticPublishPath: .
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self'; connect-src *; img-src 'self' data:; font-src 'self';"
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
     routes:
       - type: rewrite
         source: /*

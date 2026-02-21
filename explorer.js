@@ -209,7 +209,7 @@ async function loadTxs() {
     const age   = fmtAge(tx.time ?? tx.timestamp ?? tx.blockTime);
     const ins   = tx.vin?.length ?? tx.inputs  ?? tx.vinCount  ?? '—';
     const outs  = tx.vout?.length ?? tx.outputs ?? tx.voutCount ?? '—';
-    const amt   = tx.valueOut ?? tx.totalOut ?? tx.amount ?? tx.value ?? null;
+    const amt   = tx.totalValueOut ?? tx.valueOut ?? tx.totalOut ?? tx.amount ?? tx.value ?? null;
     return `
       <tr class="clickable" data-type="tx" data-id="${txid}">
         <td class="mono small"><a href="#" onclick="return false">${fmtShort(txid, 16)}</a></td>

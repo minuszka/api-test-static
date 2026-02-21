@@ -109,6 +109,7 @@ a:hover { text-decoration: underline; }
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: center;
   font-family: var(--mono);
 }
 .ticker .sep { opacity: 0.3; }
