@@ -41,6 +41,33 @@ body {
   max-width: 760px;
 }
 
+.hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.demo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 10px 20px;
+  background: linear-gradient(120deg, #0b5fff 0%, #06b6d4 100%);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  text-decoration: none !important;
+  box-shadow: 0 4px 16px rgba(11,95,255,0.3);
+  transition: opacity 0.2s, transform 0.15s;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.demo-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);

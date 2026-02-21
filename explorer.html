@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeFCoN Explorer</title>
+    <link rel="stylesheet" href="./explorer.css" />
+  </head>
+  <body>
+
+    <!-- ── Navigation ───────────────────────────────────────── -->
+    <nav class="nav">
+      <div class="nav-inner">
+        <a class="logo" href="explorer.html">
+          DeFCoN<span>Explorer</span>
+        </a>
+        <form class="search-form" id="searchForm" autocomplete="off">
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Search block height, hash, txid or address…"
+            spellcheck="false"
+          />
+          <button type="submit">Search</button>
+        </form>
+        <a class="nav-link" href="https://deftrack.xyz" target="_blank">Live Site ↗</a>
+      </div>
+    </nav>
+
+    <!-- ── Ticker ────────────────────────────────────────────── -->
+    <div class="ticker">
+      <span id="tickHeight">Height: —</span>
+      <span class="sep">|</span>
+      <span id="tickPrice">DFC: —</span>
+      <span class="sep">|</span>
+      <span id="tickHashrate">Hashrate: —</span>
+      <span class="sep">|</span>
+      <span id="tickMempool">Mempool: — txs</span>
+      <span class="sep">|</span>
+      <span id="tickPeers">Peers: —</span>
+      <span class="sep">|</span>
+      <span id="tickSupply">Supply: —</span>
+    </div>
+
+    <main class="container">
+
+      <!-- ── Search results (hidden by default) ──────────────── -->
+      <section id="searchResults" class="search-results hidden"></section>
+
+      <!-- ── Stats cards ──────────────────────────────────────── -->
+      <section class="stats-grid" id="statsGrid">
+        <div class="stat-card skeleton"><div class="stat-label">Block Height</div><div class="stat-value">—</div></div>
+        <div class="stat-card skeleton"><div class="stat-label">Circulating Supply</div><div class="stat-value">—</div></div>
+        <div class="stat-card skeleton"><div class="stat-label">Hashrate</div><div class="stat-value">—</div></div>
+        <div class="stat-card skeleton"><div class="stat-label">Price</div><div class="stat-value">—</div></div>
+        <div class="stat-card skeleton"><div class="stat-label">Masternodes</div><div class="stat-value">—</div></div>
+        <div class="stat-card skeleton"><div class="stat-label">Mempool</div><div class="stat-value">—</div></div>
+        <div class="stat-card skeleton"><div class="stat-label">Connections</div><div class="stat-value">—</div></div>
+        <div class="stat-card skeleton"><div class="stat-label">Block Reward</div><div class="stat-value">—</div></div>
+      </section>
+
+      <!-- ── Latest Blocks + Txs ──────────────────────────────── -->
+      <div class="tables-row">
+        <section class="table-section">
+          <div class="section-head">
+            <h2>Latest Blocks</h2>
+            <span class="live-badge" id="blockBadge">Loading…</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Height</th>
+                  <th>Age</th>
+                  <th>Txs</th>
+                  <th>Size</th>
+                  <th>Reward</th>
+                </tr>
+              </thead>
+              <tbody id="blocksBody">
+                <tr><td colspan="5" class="tloading">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="table-section">
+          <div class="section-head">
+            <h2>Latest Transactions</h2>
+            <span class="live-badge">Live</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>TXID</th>
+                  <th>Age</th>
+                  <th>In</th>
+                  <th>Out</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="txsBody">
+                <tr><td colspan="5" class="tloading">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── Market + Masternodes ──────────────────────────────── -->
+      <div class="tables-row">
+        <section class="table-section">
+          <div class="section-head"><h2>Rich List — Top 10</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Address</th><th>Balance</th><th>% Supply</th></tr>
+              </thead>
+              <tbody id="richBody">
+                <tr><td colspan="4" class="tloading">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="table-section">
+          <div class="section-head"><h2>Market</h2></div>
+          <div class="market-grid" id="marketGrid">
+            <p class="tloading">Loading…</p>
+          </div>
+        </section>
+      </div>
+
+    </main>
+
+    <!-- ── Detail Modal ──────────────────────────────────────── -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-backdrop" id="modalBackdrop"></div>
+      <div class="modal-box">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <div id="modalContent"></div>
+      </div>
+    </div>
+
+    <!-- ── Footer ───────────────────────────────────────────── -->
+    <footer class="footer">
+      <p>DeFCoN Explorer — data provided by <a href="https://deftrack.xyz/api" target="_blank">deftrack.xyz/api</a></p>
+      <p class="footer-meta">Auto-refresh every 30 s &nbsp;|&nbsp; Last update: <span id="lastUpdate">—</span></p>
+    </footer>
+
+    <script src="./explorer.js"></script>
+  </body>
+</html>
