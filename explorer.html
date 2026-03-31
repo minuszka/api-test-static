@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DefTrack Explorer Demo</title>
+    <link rel="stylesheet" href="./explorer.css" />
+  </head>
+  <body>
+
+    <!-- Ticker bar -->
+    <div class="ticker-bar">
+      <div class="ticker-inner">
+        <span id="tickHeight">Height: —</span>
+        <span id="tickHashrate">Hashrate: —</span>
+        <span id="tickMempool">Mempool: —</span>
+        <span id="tickPeers">Peers: —</span>
+        <span id="tickSupply">Supply: —</span>
+        <span id="tickPrice">DFC: —</span>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <!-- Header -->
+      <header class="site-header">
+        <div>
+          <h1 class="site-title">DefTrack Explorer</h1>
+          <p class="site-sub">Live blockchain data — updates every 30 s</p>
+        </div>
+        <div class="header-right">
+          <form id="searchForm" class="search-form">
+            <input id="searchInput" type="text" placeholder="Address / tx hash / block height…" spellcheck="false" />
+            <button type="submit">Search</button>
+          </form>
+          <a class="back-link" href="./index.html">← API Toolkit</a>
+        </div>
+      </header>
+
+      <!-- Stats grid -->
+      <section class="stats-section">
+        <div id="statsGrid" class="stats-grid">
+          <!-- filled by JS -->
+          <div class="stat-card"><div class="stat-label">Loading…</div><div class="stat-value">—</div></div>
+        </div>
+      </section>
+
+      <!-- Search results (hidden by default) -->
+      <section id="searchResults" class="search-results hidden"></section>
+
+      <!-- Two-column: Blocks + Txs -->
+      <div class="two-col-tables">
+
+        <div class="table-card">
+          <div class="table-head">
+            <span class="table-title">Latest Blocks</span>
+            <span class="badge live" id="blockBadge">Loading</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Height</th><th>Age</th><th>Txs</th><th>Size</th><th>Reward</th>
+              </tr></thead>
+              <tbody id="blocksBody">
+                <tr><td colspan="5" class="tloading">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-head">
+            <span class="table-title">Latest Transactions</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>TxID</th><th>Age</th><th>In</th><th>Out</th><th>Amount</th>
+              </tr></thead>
+              <tbody id="txsBody">
+                <tr><td colspan="5" class="tloading">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Rich List -->
+      <div class="table-card" style="margin-bottom: 16px;">
+        <div class="table-head">
+          <span class="table-title">Rich List — Top 10</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>Address</th><th>Balance</th>
+            </tr></thead>
+            <tbody id="richBody">
+              <tr><td colspan="4" class="tloading">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Market -->
+      <div class="table-card" style="margin-bottom: 16px;">
+        <div class="table-head">
+          <span class="table-title">Market Data</span>
+        </div>
+        <div id="marketGrid" class="market-grid">
+          <div class="market-item"><div class="mi-label">Loading…</div><div class="mi-value">—</div></div>
+        </div>
+      </div>
+
+      <footer class="site-footer">
+        Last updated: <span id="lastUpdate">—</span>
+      </footer>
+
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal hidden">
+      <div id="modalBackdrop" class="modal-backdrop"></div>
+      <div class="modal-box">
+        <button id="modalClose" class="modal-close" type="button">✕</button>
+        <div id="modalContent" class="modal-content"></div>
+      </div>
+    </div>
+
+    <script src="./explorer.js"></script>
+  </body>
+</html>
