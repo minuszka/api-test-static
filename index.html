@@ -1,75 +1,62 @@
 <!doctype html>
-<html lang="en">
+<html lang="hu">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DeFCoN Explorer &mdash; API Tester</title>
+    <title>DeFCoN API Teszt</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="page">
       <section class="hero">
-        <div class="hero-top">
-          <div>
-            <h1>DeFCoN Explorer &mdash; API Tester</h1>
-            <p>
-              Sequentially executes every API endpoint and displays the full JSON responses.
-              Wallet address, block hash and transaction ID are resolved automatically
-              from live data; you can also override them manually.
-            </p>
-          </div>
-          <a class="demo-btn" href="./explorer.html" target="_blank" rel="noopener">
-            🚀 Open Explorer Demo
-          </a>
-        </div>
+        <h1>DeFCoN API Tesztoldal</h1>
+        <p>
+          Egy oldalon, sorszamozva fut le minden API-hivas. A progressz sor mutatja,
+          eppen melyik endpoint olvasasa tortenik.
+        </p>
       </section>
 
       <section class="controls card">
         <div class="control-group">
-          <label for="baseUrl">API base URL</label>
+          <label for="baseUrl">API v1 base URL</label>
           <input id="baseUrl" type="text" spellcheck="false" />
           <small class="hint">
-            Example: <code>https://deftrack.xyz/api</code> or <code>http://localhost:3001/api</code>
+            Pelda: <code>/api/v1</code> vagy <code>http://localhost:3001/api/v1</code>
           </small>
         </div>
 
         <div class="control-group">
-          <label for="addressInput">Wallet address (auto-resolved or manual)</label>
-          <input id="addressInput" type="text" spellcheck="false" placeholder="Auto-resolved from the rich list" />
+          <label for="addressInput">Address parameter (address endpointhez)</label>
+          <input id="addressInput" type="text" spellcheck="false" placeholder="Automatikus felderites vagy kezi cim" />
         </div>
 
         <div class="control-group">
-          <label for="blockHashInput">Block hash or height (auto-resolved or manual)</label>
-          <input id="blockHashInput" type="text" spellcheck="false" placeholder="Auto-resolved from the latest block" />
-        </div>
-
-        <div class="control-group">
-          <label for="txidInput">Transaction ID (auto-resolved or manual)</label>
-          <input id="txidInput" type="text" spellcheck="false" placeholder="Auto-resolved from the latest transaction" />
+          <label for="masternodeInput">Masternode ID parameter</label>
+          <input id="masternodeInput" type="text" spellcheck="false" placeholder="Automatikus felderites vagy kezi ID" />
         </div>
 
         <div class="actions">
-          <button id="runButton" type="button">Re-run all endpoints</button>
+          <button id="runButton" type="button">API-k ujraolvasasa</button>
         </div>
       </section>
 
       <section class="status card">
         <div class="row">
-          <strong>Status:</strong>
-          <span id="runStatus">Waiting to start.</span>
+          <strong>Allapot:</strong>
+          <span id="runStatus">Varakozas inditasra.</span>
         </div>
         <div class="row">
-          <strong>Currently fetching:</strong>
+          <strong>Eppen olvasas alatt:</strong>
           <span id="currentEndpoint">-</span>
         </div>
         <div class="row">
-          <strong>Success / error / skipped:</strong>
+          <strong>Sikeres / hibas / kihagyott:</strong>
           <span id="summary">0 / 0 / 0</span>
         </div>
       </section>
 
       <section class="results">
-        <h2>API results</h2>
+        <h2>API eredmenyek</h2>
         <div id="resultsList" class="results-list"></div>
       </section>
     </main>
