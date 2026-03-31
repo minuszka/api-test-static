@@ -1,62 +1,57 @@
-<!doctype html>
-<html lang="hu">
+﻿<!doctype html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DeFCoN API Teszt</title>
+    <title>DefTrack API Toolkit</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="page">
-      <section class="hero">
-        <h1>DeFCoN API Tesztoldal</h1>
-        <p>
-          Egy oldalon, sorszamozva fut le minden API-hivas. A progressz sor mutatja,
-          eppen melyik endpoint olvasasa tortenik.
-        </p>
+      <section class="hero card">
+        <div>
+          <h1>DefTrack API Toolkit</h1>
+          <p>
+            Validate public API endpoints and inspect live blockchain output in a clean static UI.
+            This page tests API response health; the Explorer Demo shows formatted data rendering.
+          </p>
+        </div>
+        <a class="demo-link" href="./explorer.html">Open Explorer Demo</a>
       </section>
 
       <section class="controls card">
         <div class="control-group">
-          <label for="baseUrl">API v1 base URL</label>
+          <label for="baseUrl">API v1 Base URL</label>
           <input id="baseUrl" type="text" spellcheck="false" />
           <small class="hint">
-            Pelda: <code>/api/v1</code> vagy <code>http://localhost:3001/api/v1</code>
+            Example: <code>https://deftrack.xyz/api/v1</code> or <code>http://localhost:3001/api/v1</code>
           </small>
         </div>
 
-        <div class="control-group">
-          <label for="addressInput">Address parameter (address endpointhez)</label>
-          <input id="addressInput" type="text" spellcheck="false" placeholder="Automatikus felderites vagy kezi cim" />
-        </div>
-
-        <div class="control-group">
-          <label for="masternodeInput">Masternode ID parameter</label>
-          <input id="masternodeInput" type="text" spellcheck="false" placeholder="Automatikus felderites vagy kezi ID" />
+        <div class="control-group two-col">
+          <div>
+            <label for="addressInput">Address (for address rewards endpoint)</label>
+            <input id="addressInput" type="text" spellcheck="false" placeholder="Auto-discover or enter manually" />
+          </div>
+          <div>
+            <label for="masternodeInput">Masternode ID (for detail endpoints)</label>
+            <input id="masternodeInput" type="text" spellcheck="false" placeholder="Auto-discover or enter manually" />
+          </div>
         </div>
 
         <div class="actions">
-          <button id="runButton" type="button">API-k ujraolvasasa</button>
+          <button id="runButton" type="button">Run Full API Check</button>
         </div>
       </section>
 
       <section class="status card">
-        <div class="row">
-          <strong>Allapot:</strong>
-          <span id="runStatus">Varakozas inditasra.</span>
-        </div>
-        <div class="row">
-          <strong>Eppen olvasas alatt:</strong>
-          <span id="currentEndpoint">-</span>
-        </div>
-        <div class="row">
-          <strong>Sikeres / hibas / kihagyott:</strong>
-          <span id="summary">0 / 0 / 0</span>
-        </div>
+        <div class="row"><strong>Status:</strong><span id="runStatus">Idle.</span></div>
+        <div class="row"><strong>Currently running:</strong><span id="currentEndpoint">-</span></div>
+        <div class="row"><strong>Passed / Failed / Skipped:</strong><span id="summary">0 / 0 / 0</span></div>
       </section>
 
       <section class="results">
-        <h2>API eredmenyek</h2>
+        <h2>Endpoint Results</h2>
         <div id="resultsList" class="results-list"></div>
       </section>
     </main>
