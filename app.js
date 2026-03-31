@@ -1,146 +1,334 @@
-'use strict';
+﻿const ENDPOINTS = [
+  { id: 'meta', label: 'V1 Meta', path: '/api/v1/meta', method: 'GET' },
+  { id: 'networkHealth', label: 'V1 Network Health', path: '/api/v1/network/health', method: 'GET' },
+  { id: 'rewardsCurrent', label: 'V1 Rewards Current', path: '/api/v1/rewards/current', method: 'GET' },
+  { id: 'latestBlocksV1', label: 'V1 Latest Blocks', path: '/api/v1/blocks/latest?count=10', method: 'GET' },
+  { id: 'latestTxsV1', label: 'V1 Latest Txs', path: '/api/v1/txs/latest?count=10', method: 'GET' },
+  {
+    id: 'addressRewards',
+    label: 'V1 Address Rewards',
+    path: '/api/v1/address/{address}/rewards?days=30',
+    method: 'GET',
+    requiresAddress: true,
+  },
+  {
+    id: 'masternodeById',
+    label: 'V1 Masternode By ID',
+    path: '/api/v1/masternodes/{mnId}',
+    method: 'GET',
+    requiresMasternodeId: true,
+  },
+  {
+    id: 'masternodeEvents',
+    label: 'V1 Masternode Events',
+    path: '/api/v1/masternodes/{mnId}/events?limit=20',
+    method: 'GET',
+    requiresMasternodeId: true,
+  },
+  { id: 'stats', label: 'Core Stats', path: '/api/stats', method: 'GET' },
+  { id: 'masternodes', label: 'Core Masternodes', path: '/api/masternodes', method: 'GET' },
+  { id: 'market', label: 'Core Market', path: '/api/market', method: 'GET' },
+  {
+    id: 'migration',
+    label: 'Migration Transparency',
+    path: '/api/migration/transparency?count=20',
+    method: 'GET',
+  },
+];
 
-const DEFAULT_BASE = 'https://deftrack.xyz/api/v1';
+const endpointBody = document.getElementById('endpointBody');
+const responseMeta = document.getElementById('responseMeta');
+const responseViewer = document.getElementById('responseViewer');
+const baseUrlInput = document.getElementById('baseUrlInput');
+const addressInput = document.getElementById('addressInput');
+const mnIdInput = document.getElementById('mnIdInput');
+const runAllBtn = document.getElementById('runAllBtn');
+const clearBtn = document.getElementById('clearBtn');
+const copyCurlBtn = document.getElementById('copyCurlBtn');
+const copyJsonBtn = document.getElementById('copyJsonBtn');
 
-let running = false;
-let passed = 0, failed = 0, skipped = 0;
+let activeEndpointId = null;
+let lastCurl = '';
+let lastJson = '';
+let autoDiscoverAttempted = false;
 
-function qs(sel) { return document.querySelector(sel); }
-function setStatus(msg) { qs('#runStatus').textContent = msg; }
-function setCurrent(ep)  { qs('#currentEndpoint').textContent = ep || '-'; }
-function setSummary()    { qs('#summary').textContent = `${passed} / ${failed} / ${skipped}`; }
-
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+function formatMs(value) {
+  if (!Number.isFinite(value)) return 'n/a';
+  return `${Math.round(value)} ms`;
 }
 
-function renderCard(num, label, status, result) {
-  const badgeClass = { pending: 'pending', running: 'running', ok: 'ok', skip: 'pending', bad: 'bad' }[status] ?? 'pending';
-  const badgeText  = { pending: 'Pending', running: 'Running…', ok: `OK ${result?.status ?? ''}`, skip: 'Skipped', bad: `Error ${result?.status ?? ''}` }[status] ?? status;
+function setStatus(el, type, text) {
+  el.className = `status-pill status-${type}`;
+  el.textContent = text;
+}
 
-  let body = '';
-  if (result) {
-    const preview = result.json != null
-      ? JSON.stringify(result.json, null, 2)
-      : result.text ?? '';
-    body = `
-      <div class="result-meta">${escHtml(result.url)}</div>
-      <div class="response-box"><pre>${escHtml(preview.slice(0, 3000))}</pre></div>`;
+function normalizeBaseUrl(raw) {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return 'https://deftrack.xyz';
+  return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+}
+
+function resolvePath(template) {
+  let path = template;
+  if (path.includes('{address}')) {
+    const address = (addressInput.value || '').trim();
+    path = path.replace('{address}', encodeURIComponent(address));
+  }
+  if (path.includes('{mnId}')) {
+    const mnId = (mnIdInput.value || '').trim();
+    path = path.replace('{mnId}', encodeURIComponent(mnId));
+  }
+  return path;
+}
+
+function endpointCanRun(endpoint) {
+  if (endpoint.requiresAddress && !(addressInput.value || '').trim()) return false;
+  if (endpoint.requiresMasternodeId && !(mnIdInput.value || '').trim()) return false;
+  return true;
+}
+
+function pickFirstAddressFromTxs(payload) {
+  const txs = Array.isArray(payload?.data) ? payload.data : [];
+  for (const tx of txs) {
+    const outputs = Array.isArray(tx?.vout) ? tx.vout : [];
+    for (const out of outputs) {
+      const addresses = Array.isArray(out?.scriptPubKey?.addresses) ? out.scriptPubKey.addresses : [];
+      const found = addresses.find((addr) => typeof addr === 'string' && addr.length >= 26);
+      if (found) return found;
+    }
+  }
+  return '';
+}
+
+function pickFirstMasternodeId(payload) {
+  const nodes = Array.isArray(payload?.data?.nodes) ? payload.data.nodes : [];
+  const first = nodes[0];
+  if (!first) return '';
+  if (typeof first.id === 'string' && first.id.trim()) return first.id.trim();
+  if (typeof first.proTxHash === 'string' && first.proTxHash.trim()) return first.proTxHash.trim();
+  return '';
+}
+
+async function autoDiscoverInputs() {
+  if (autoDiscoverAttempted) return;
+  autoDiscoverAttempted = true;
+
+  const needAddress = !(addressInput.value || '').trim();
+  const needMnId = !(mnIdInput.value || '').trim();
+  if (!needAddress && !needMnId) return;
+
+  const baseUrl = normalizeBaseUrl(baseUrlInput.value);
+  responseMeta.textContent = 'Auto-discovering address and masternode ID...';
+
+  const tasks = [];
+
+  if (needAddress) {
+    tasks.push(
+      fetch(`${baseUrl}/api/txs/latest?count=25`, { headers: { Accept: 'application/json' } })
+        .then((r) => r.json())
+        .then((body) => ({ kind: 'address', value: pickFirstAddressFromTxs(body) }))
+        .catch(() => ({ kind: 'address', value: '' }))
+    );
   }
 
-  return `<div class="result-card" id="card-${num}">
-    <div class="result-head">
-      <span class="endpoint-number">${num}</span>
-      <span class="endpoint-path">${escHtml(label)}</span>
-      <span class="badge ${badgeClass}">${badgeText}</span>
-    </div>${body}
-  </div>`;
-}
+  if (needMnId) {
+    tasks.push(
+      fetch(`${baseUrl}/api/masternodes`, { headers: { Accept: 'application/json' } })
+        .then((r) => r.json())
+        .then((body) => ({ kind: 'mnId', value: pickFirstMasternodeId(body) }))
+        .catch(() => ({ kind: 'mnId', value: '' }))
+    );
+  }
 
-function updateCard(num, label, status, result) {
-  const el = document.getElementById(`card-${num}`);
-  if (el) el.outerHTML = renderCard(num, label, status, result);
-}
-
-async function fetchEndpoint(url) {
-  const r = await fetch(url);
-  const text = await r.text();
-  let json = null;
-  try { json = JSON.parse(text); } catch (_) {}
-  return { ok: r.ok, status: r.status, url, json, text };
-}
-
-async function run() {
-  if (running) return;
-  running = true;
-  passed = 0; failed = 0; skipped = 0;
-
-  const base = (qs('#baseUrl').value.trim() || DEFAULT_BASE).replace(/\/+$/, '');
-  let address     = qs('#addressInput').value.trim();
-  let masternodeId = qs('#masternodeInput').value.trim();
-
-  const endpoints = [
-    { id: 'stats',       path: '/stats' },
-    { id: 'market',      path: '/market' },
-    { id: 'masternodes', path: '/masternodes' },
-    { id: 'blocks',      path: '/blocks/latest?count=5' },
-    { id: 'txs',         path: '/txs/latest?count=5' },
-    { id: 'richlist',    path: '/richlist?page=1&limit=5' },
-    { id: 'address',     path: null, needsAddress: true,     label: '/address/{addr}' },
-    { id: 'masternode',  path: null, needsMasternode: true,  label: '/masternode/{id}' },
-  ];
-
-  const btn = qs('#runButton');
-  btn.disabled = true;
-
-  qs('#resultsList').innerHTML = endpoints
-    .map((ep, i) => renderCard(i + 1, ep.label ?? ep.path, 'pending', null))
-    .join('');
-
-  setStatus('Running…');
-  setSummary();
-
-  for (let i = 0; i < endpoints.length; i++) {
-    const ep  = endpoints[i];
-    const num = i + 1;
-    const displayLabel = ep.label ?? ep.path;
-
-    updateCard(num, displayLabel, 'running', null);
-    setCurrent(displayLabel);
-
-    if (ep.needsAddress && !address) {
-      skipped++; setSummary();
-      updateCard(num, displayLabel, 'skip', null);
-      continue;
+  const results = await Promise.all(tasks);
+  for (const result of results) {
+    if (result.kind === 'address' && result.value && !(addressInput.value || '').trim()) {
+      addressInput.value = result.value;
     }
-    if (ep.needsMasternode && !masternodeId) {
-      skipped++; setSummary();
-      updateCard(num, displayLabel, 'skip', null);
-      continue;
+    if (result.kind === 'mnId' && result.value && !(mnIdInput.value || '').trim()) {
+      mnIdInput.value = result.value;
     }
+  }
 
-    let path = ep.path;
-    if (ep.needsAddress)     path = `/address/${encodeURIComponent(address)}`;
-    if (ep.needsMasternode)  path = `/masternode/${encodeURIComponent(masternodeId)}`;
+  renderTable();
+}
+
+function renderTable() {
+  endpointBody.innerHTML = '';
+
+  for (const endpoint of ENDPOINTS) {
+    const tr = document.createElement('tr');
+    tr.className = 'endpoint-row';
+    tr.dataset.endpointId = endpoint.id;
+
+    const canRun = endpointCanRun(endpoint);
+    const resolvedPath = resolvePath(endpoint.path);
+
+    tr.innerHTML = `
+      <td>
+        <div>${endpoint.label}</div>
+        <div class="path mono">${resolvedPath}</div>
+      </td>
+      <td><span class="status-pill status-idle">${canRun ? 'Ready' : 'Input needed'}</span></td>
+      <td class="mono">-</td>
+      <td><button type="button" class="ghost-btn run-one-btn" ${canRun ? '' : 'disabled'}>Run</button></td>
+    `;
+
+    tr.addEventListener('click', (e) => {
+      if (e.target instanceof HTMLElement && e.target.classList.contains('run-one-btn')) return;
+      setActiveEndpoint(endpoint.id);
+    });
+
+    const runBtn = tr.querySelector('.run-one-btn');
+    runBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      setActiveEndpoint(endpoint.id);
+      await runOne(endpoint.id);
+    });
+
+    endpointBody.appendChild(tr);
+  }
+}
+
+function setActiveEndpoint(endpointId) {
+  activeEndpointId = endpointId;
+  const rows = endpointBody.querySelectorAll('.endpoint-row');
+  for (const row of rows) {
+    row.classList.toggle('active', row.dataset.endpointId === endpointId);
+  }
+}
+
+async function runOne(endpointId) {
+  const endpoint = ENDPOINTS.find((entry) => entry.id === endpointId);
+  if (!endpoint) return;
+
+  const row = endpointBody.querySelector(`tr[data-endpoint-id="${endpointId}"]`);
+  if (!row) return;
+
+  const statusEl = row.querySelector('.status-pill');
+  const latencyEl = row.children[2];
+
+  if (!endpointCanRun(endpoint)) {
+    setStatus(statusEl, 'warn', 'Input needed');
+    latencyEl.textContent = 'n/a';
+    return;
+  }
+
+  setStatus(statusEl, 'warn', 'Running');
+  latencyEl.textContent = '...';
+
+  const baseUrl = normalizeBaseUrl(baseUrlInput.value);
+  const path = resolvePath(endpoint.path);
+  const url = `${baseUrl}${path}`;
+  const curl = `curl -sS "${url}"`;
+
+  const started = performance.now();
+
+  try {
+    const response = await fetch(url, {
+      method: endpoint.method,
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    const latency = performance.now() - started;
+    let body;
 
     try {
-      const res = await fetchEndpoint(base + path);
+      body = await response.json();
+    } catch {
+      body = { parseError: 'Response is not valid JSON.' };
+    }
 
-      // Auto-discover address from richlist response
-      if (ep.id === 'richlist' && !qs('#addressInput').value.trim() && res.json) {
-        const list = res.json.data ?? res.json;
-        if (Array.isArray(list) && list[0]?.address) {
-          address = list[0].address;
-          qs('#addressInput').value = address;
-        }
-      }
-      // Auto-discover masternode ID
-      if (ep.id === 'masternodes' && !qs('#masternodeInput').value.trim() && res.json) {
-        const nodes = res.json.data?.nodes ?? res.json.nodes ?? res.json.data ?? res.json;
-        if (Array.isArray(nodes) && nodes[0]) {
-          const id = nodes[0].masternodeid ?? nodes[0].id ?? nodes[0].txid;
-          if (id) { masternodeId = id; qs('#masternodeInput').value = id; }
-        }
-      }
+    if (response.ok) {
+      setStatus(statusEl, 'ok', `${response.status}`);
+    } else {
+      setStatus(statusEl, 'err', `${response.status}`);
+    }
 
-      if (res.ok) passed++; else failed++;
-      setSummary();
-      updateCard(num, `${displayLabel}  →  ${path}`, res.ok ? 'ok' : 'bad', res);
-    } catch (e) {
-      failed++; setSummary();
-      updateCard(num, displayLabel, 'bad', { ok: false, status: 0, url: base + path, json: null, text: e.message });
+    latencyEl.textContent = formatMs(latency);
+
+    if (activeEndpointId === endpointId) {
+      responseMeta.textContent = `${endpoint.label} | ${response.status} | ${formatMs(latency)}`;
+      responseViewer.textContent = JSON.stringify(body, null, 2);
+      lastJson = responseViewer.textContent;
+      lastCurl = curl;
+      copyCurlBtn.disabled = false;
+      copyJsonBtn.disabled = false;
+    }
+  } catch (error) {
+    const latency = performance.now() - started;
+    setStatus(statusEl, 'err', 'Failed');
+    latencyEl.textContent = formatMs(latency);
+
+    if (activeEndpointId === endpointId) {
+      const errorBody = {
+        error: 'Network request failed',
+        detail: error instanceof Error ? error.message : String(error),
+      };
+      responseMeta.textContent = `${endpoint.label} | network error`;
+      responseViewer.textContent = JSON.stringify(errorBody, null, 2);
+      lastJson = responseViewer.textContent;
+      lastCurl = curl;
+      copyCurlBtn.disabled = false;
+      copyJsonBtn.disabled = false;
     }
   }
-
-  setCurrent('—');
-  setStatus(`Done — ${passed} passed, ${failed} failed, ${skipped} skipped.`);
-  btn.disabled = false;
-  running = false;
 }
 
-qs('#baseUrl').value = DEFAULT_BASE;
-qs('#runButton').addEventListener('click', run);
-run();
+async function runAll() {
+  await autoDiscoverInputs();
+  for (const endpoint of ENDPOINTS) {
+    await runOne(endpoint.id);
+  }
+}
+
+function clearResults() {
+  activeEndpointId = null;
+  lastCurl = '';
+  lastJson = '';
+  autoDiscoverAttempted = false;
+  responseMeta.textContent = 'No endpoint selected yet.';
+  responseViewer.textContent = 'Select an endpoint row to inspect output.';
+  copyCurlBtn.disabled = true;
+  copyJsonBtn.disabled = true;
+  renderTable();
+}
+
+async function copyText(text, button, fallbackLabel) {
+  if (!text) return;
+  const original = button.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = 'Copied';
+    setTimeout(() => {
+      button.textContent = original || fallbackLabel;
+    }, 1500);
+  } catch {
+    button.textContent = 'Copy failed';
+    setTimeout(() => {
+      button.textContent = original || fallbackLabel;
+    }, 1500);
+  }
+}
+
+runAllBtn.addEventListener('click', runAll);
+clearBtn.addEventListener('click', clearResults);
+
+copyCurlBtn.addEventListener('click', () => copyText(lastCurl, copyCurlBtn, 'Copy cURL'));
+copyJsonBtn.addEventListener('click', () => copyText(lastJson, copyJsonBtn, 'Copy JSON'));
+
+addressInput.addEventListener('input', () => {
+  autoDiscoverAttempted = false;
+  renderTable();
+});
+mnIdInput.addEventListener('input', () => {
+  autoDiscoverAttempted = false;
+  renderTable();
+});
+baseUrlInput.addEventListener('input', () => {
+  autoDiscoverAttempted = false;
+});
+
+renderTable();

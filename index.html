@@ -1,61 +1,87 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DefTrack API Toolkit</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <main class="page">
-      <section class="hero card">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DefTrack API Tester</title>
+  <meta
+    name="description"
+    content="Professional static API tester for DefTrack / DeFCoN endpoints with latency, status, response preview, and cURL copy."
+  />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">API</div>
         <div>
-          <h1>DefTrack API Toolkit</h1>
-          <p>
-            Validate public API endpoints and inspect live blockchain output in a clean static UI.
-            This page tests API response health; the Explorer Demo shows formatted data rendering.
-          </p>
+          <h1>DefTrack API Tester</h1>
+          <p>Professional endpoint checks with live response previews.</p>
         </div>
-        <a class="demo-link" href="./explorer.html">Open Explorer Demo</a>
-      </section>
+      </div>
+      <div class="topbar-actions">
+        <a class="ghost-btn" href="./explorer.html">Open Live Demo</a>
+      </div>
+    </header>
 
-      <section class="controls card">
-        <div class="control-group">
-          <label for="baseUrl">API v1 Base URL</label>
-          <input id="baseUrl" type="text" spellcheck="false" />
-          <small class="hint">
-            Example: <code>https://deftrack.xyz/api/v1</code> or <code>http://localhost:3001/api/v1</code>
-          </small>
+    <main class="layout">
+      <section class="card controls">
+        <h2>Connection</h2>
+        <div class="control-grid">
+          <label>
+            Base URL
+            <input id="baseUrlInput" type="text" value="https://deftrack.xyz" />
+          </label>
+          <label>
+            Sample Address (for rewards endpoint)
+            <input id="addressInput" type="text" placeholder="D..." />
+          </label>
+          <label>
+            Masternode ID / proTxHash
+            <input id="mnIdInput" type="text" placeholder="hex id" />
+          </label>
         </div>
-
-        <div class="control-group two-col">
-          <div>
-            <label for="addressInput">Address (for address rewards endpoint)</label>
-            <input id="addressInput" type="text" spellcheck="false" placeholder="Auto-discover or enter manually" />
-          </div>
-          <div>
-            <label for="masternodeInput">Masternode ID (for detail endpoints)</label>
-            <input id="masternodeInput" type="text" spellcheck="false" placeholder="Auto-discover or enter manually" />
-          </div>
-        </div>
-
-        <div class="actions">
-          <button id="runButton" type="button">Run Full API Check</button>
+        <div class="button-row">
+          <button id="runAllBtn" class="primary-btn" type="button">Run All Checks</button>
+          <button id="clearBtn" class="ghost-btn" type="button">Clear Results</button>
         </div>
       </section>
 
-      <section class="status card">
-        <div class="row"><strong>Status:</strong><span id="runStatus">Idle.</span></div>
-        <div class="row"><strong>Currently running:</strong><span id="currentEndpoint">-</span></div>
-        <div class="row"><strong>Passed / Failed / Skipped:</strong><span id="summary">0 / 0 / 0</span></div>
+      <section class="card endpoint-card">
+        <div class="section-head">
+          <h2>Endpoint Matrix</h2>
+          <p>Click a row to inspect the response body and copy a cURL command.</p>
+        </div>
+        <div class="table-wrap">
+          <table class="endpoint-table">
+            <thead>
+              <tr>
+                <th>Endpoint</th>
+                <th>Status</th>
+                <th>Latency</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="endpointBody"></tbody>
+          </table>
+        </div>
       </section>
 
-      <section class="results">
-        <h2>Endpoint Results</h2>
-        <div id="resultsList" class="results-list"></div>
+      <section class="card response-card">
+        <div class="section-head">
+          <h2>Response Viewer</h2>
+          <p id="responseMeta">No endpoint selected yet.</p>
+        </div>
+        <div class="button-row">
+          <button id="copyCurlBtn" class="ghost-btn" type="button" disabled>Copy cURL</button>
+          <button id="copyJsonBtn" class="ghost-btn" type="button" disabled>Copy JSON</button>
+        </div>
+        <pre id="responseViewer" class="json-viewer">Select an endpoint row to inspect output.</pre>
       </section>
     </main>
+  </div>
 
-    <script src="./app.js"></script>
-  </body>
+  <script src="./app.js" defer></script>
+</body>
 </html>
