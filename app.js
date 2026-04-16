@@ -394,3 +394,6 @@ baseUrlInput.addEventListener('input', () => {
 });
 
 renderTable();
+autoDiscoverInputs().catch(() => {
+  responseMeta.textContent = 'Auto-discovery failed. Enter sample address and masternode ID manually.';
+});

@@ -1,68 +1,64 @@
-# DeFCoN Explorer — API Tester
+# DefTrack API Tester (Static)
 
-A lightweight, framework-free static page that sequentially calls every endpoint of the [DeFCoN Explorer API](https://deftrack.xyz/api) and displays the full JSON responses. Includes a live Explorer Demo page with auto-refreshing stats, blocks, transactions, rich list, and market data.
+Framework-free static UI for testing DefTrack API endpoints and browsing live chain data.
 
-**Live:** [api-test-static.onrender.com](https://api-test-static.onrender.com)
+Live site: [https://apitest.deftrack.xyz](https://apitest.deftrack.xyz)
 
----
+## Project Structure
 
-## Pages
+- `index.html` + `app.js`: endpoint matrix tester
+- `explorer.html` + `explorer.js`: live dashboard / explorer view
+- `styles.css`, `explorer.css`: page styles
 
-| Page | Description |
-|------|-------------|
-| `index.html` | API Tester — runs all 20 endpoints and shows raw JSON responses |
-| `explorer.html` | Explorer Demo — visual block explorer UI with live data |
+## API Tester (`index.html`)
 
----
+Features:
 
-## API Tester
+- Runs endpoint checks from one table (`Run All Checks` or per-row `Run`)
+- Shows status code and latency
+- Shows JSON response body and cURL for selected row
+- Auto-discovers sample `address` and `masternode id` for parameterized endpoints
+- Validates response type (non-JSON `200` is treated as error)
 
-Opens automatically on load. For each endpoint it shows the HTTP status, response time, full URL, and the JSON body.
+Default Base URL:
 
-- Wallet address, block hash, and transaction ID are **auto-resolved** from live data
-- All three can be overridden manually in the input fields
-- Click **Re-run all endpoints** to re-execute
+- `https://deftrack.xyz`
 
-### Base URL options
+Discovery fallback bases:
 
-| Environment | Base URL |
-|-------------|----------|
-| Production | `https://deftrack.xyz/api` |
-| Local dev | `http://localhost:3001/api` |
-| Relative | `/api` |
+- `https://deftrack.xyz`
+- `https://apitest.deftrack.xyz`
 
----
+### Covered Endpoints (12)
 
-## Endpoints covered (20)
+- `GET /api/v1/meta`
+- `GET /api/v1/network/health`
+- `GET /api/v1/rewards/current`
+- `GET /api/v1/blocks/latest?count=10`
+- `GET /api/v1/txs/latest?count=10`
+- `GET /api/v1/address/{address}/rewards?days=30`
+- `GET /api/v1/masternodes/{mnId}`
+- `GET /api/v1/masternodes/{mnId}/events?limit=20`
+- `GET /api/stats`
+- `GET /api/masternodes`
+- `GET /api/market`
+- `GET /api/migration/transparency?count=20`
 
-| Group | Endpoint |
-|-------|----------|
-| Stats | `GET /stats` |
-| Dashboard | `GET /dashboard/overview` |
-| Coin | `GET /coin` |
-| Sync | `GET /sync` |
-| Network | `GET /network` |
-| Blocks | `GET /blocks/latest` |
-| Blocks | `GET /blocks` |
-| Block | `GET /block/:blockHash` |
-| Transactions | `GET /txs/latest` |
-| Transactions | `GET /txs` |
-| Transaction | `GET /tx/:txid` |
-| Mempool | `GET /mempool` |
-| Masternodes | `GET /masternodes` |
-| Rich List | `GET /richlist` |
-| Rich List | `GET /richlist/distribution` |
-| Address | `GET /address/:address` |
-| Address | `GET /address/:address/txs` |
-| Market | `GET /market` |
-| Market | `GET /market/history` |
-| Search | `GET /search` |
+## Explorer (`explorer.html`)
 
----
+Features:
 
-## Local development
+- Auto-refresh every 30s
+- Stats cards, latest blocks, latest transactions, rich list, market panel
+- Search and detail modal
+- Multi-backend API fallback with timeout for resiliency:
+  - `https://deftrack.xyz/api`
+  - `${window.location.origin}/api`
+  - `https://apitest.deftrack.xyz/api`
 
-No build step required. Open `index.html` directly in a browser, or serve the directory with any static file server:
+## Local Development
+
+No build tools required.
 
 ```bash
 npx serve .
@@ -70,20 +66,22 @@ npx serve .
 python3 -m http.server 8080
 ```
 
-Then open `http://localhost:8080`.
+Open:
 
----
+- `http://localhost:8080/index.html`
+- `http://localhost:8080/explorer.html`
 
-## Deployment (Render)
+## Deployment
 
-Configured for [Render Static Sites](https://render.com) via `render.yaml`.
+Static files can be served by Nginx (current production setup) or any static host.
 
-- **Publish directory:** `.` (repo root)
-- **Build command:** *(none)*
-- Security headers (CSP, X-Frame-Options, etc.) are set in `render.yaml`
+Important production notes:
 
----
+- If browser calls go directly to `deftrack.xyz`, CORS headers must be present there.
+- If `/api` is proxied via `apitest.deftrack.xyz`, ensure Nginx `location /api/` routes to upstream API and does not fall through to `index.html`.
 
 ## Stack
 
-Pure HTML + CSS + Vanilla JS. No dependencies, no build tools, no frameworks.
+- Pure HTML/CSS/vanilla JS
+- No build step
+- No external frontend dependencies
