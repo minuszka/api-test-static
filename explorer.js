@@ -1,6 +1,6 @@
 'use strict';
 
-const API        = 'https://deftrack.xyz/api';
+const API        = 'https://apitest.deftrack.xyz/api';
 const REFRESH_MS = 30_000;
 
 // ── Formatters ────────────────────────────────────────────────

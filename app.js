@@ -64,7 +64,7 @@ function setStatus(el, type, text) {
 
 function normalizeBaseUrl(raw) {
   const trimmed = (raw || '').trim();
-  if (!trimmed) return 'https://deftrack.xyz';
+  if (!trimmed) return 'https://apitest.deftrack.xyz';
   return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
 }
 
