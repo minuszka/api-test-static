@@ -51,6 +51,8 @@ let activeEndpointId = null;
 let lastCurl = '';
 let lastJson = '';
 let autoDiscoverAttempted = false;
+const DISCOVERY_TIMEOUT_MS = 4_000;
+const DISCOVERY_FALLBACK_BASES = ['https://deftrack.xyz', 'https://apitest.deftrack.xyz'];
 
 function formatMs(value) {
   if (!Number.isFinite(value)) return 'n/a';
@@ -64,8 +66,48 @@ function setStatus(el, type, text) {
 
 function normalizeBaseUrl(raw) {
   const trimmed = (raw || '').trim();
-  if (!trimmed) return 'https://apitest.deftrack.xyz';
+  if (!trimmed) return 'https://deftrack.xyz';
   return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+}
+
+function getDiscoveryBases(preferredBase) {
+  return Array.from(new Set([
+    normalizeBaseUrl(preferredBase),
+    ...DISCOVERY_FALLBACK_BASES.map(normalizeBaseUrl),
+  ]));
+}
+
+function isJsonContentType(value) {
+  const contentType = (value || '').toLowerCase();
+  return contentType.includes('application/json') || contentType.includes('+json');
+}
+
+async function fetchJsonWithFallback(path, bases) {
+  let lastError = null;
+
+  for (const base of bases) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DISCOVERY_TIMEOUT_MS);
+    try {
+      const response = await fetch(`${base}${path}`, {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!isJsonContentType(response.headers.get('content-type'))) {
+        throw new Error(`Non-JSON response from ${base}${path}`);
+      }
+
+      const body = await response.json();
+      return { base, body };
+    } catch (error) {
+      lastError = error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw lastError || new Error(`Failed to fetch ${path}`);
 }
 
 function resolvePath(template) {
@@ -118,36 +160,43 @@ async function autoDiscoverInputs() {
   if (!needAddress && !needMnId) return;
 
   const baseUrl = normalizeBaseUrl(baseUrlInput.value);
+  const discoveryBases = getDiscoveryBases(baseUrl);
   responseMeta.textContent = 'Auto-discovering address and masternode ID...';
 
   const tasks = [];
 
   if (needAddress) {
     tasks.push(
-      fetch(`${baseUrl}/api/txs/latest?count=25`, { headers: { Accept: 'application/json' } })
-        .then((r) => r.json())
-        .then((body) => ({ kind: 'address', value: pickFirstAddressFromTxs(body) }))
+      fetchJsonWithFallback('/api/txs/latest?count=25', discoveryBases)
+        .then(({ base, body }) => ({ kind: 'address', base, value: pickFirstAddressFromTxs(body) }))
         .catch(() => ({ kind: 'address', value: '' }))
     );
   }
 
   if (needMnId) {
     tasks.push(
-      fetch(`${baseUrl}/api/masternodes`, { headers: { Accept: 'application/json' } })
-        .then((r) => r.json())
-        .then((body) => ({ kind: 'mnId', value: pickFirstMasternodeId(body) }))
+      fetchJsonWithFallback('/api/masternodes', discoveryBases)
+        .then(({ base, body }) => ({ kind: 'mnId', base, value: pickFirstMasternodeId(body) }))
         .catch(() => ({ kind: 'mnId', value: '' }))
     );
   }
 
   const results = await Promise.all(tasks);
+  let discoveredBase = '';
   for (const result of results) {
     if (result.kind === 'address' && result.value && !(addressInput.value || '').trim()) {
       addressInput.value = result.value;
+      discoveredBase = discoveredBase || result.base || '';
     }
     if (result.kind === 'mnId' && result.value && !(mnIdInput.value || '').trim()) {
       mnIdInput.value = result.value;
+      discoveredBase = discoveredBase || result.base || '';
     }
+  }
+
+  if (discoveredBase && discoveredBase !== baseUrl) {
+    baseUrlInput.value = discoveredBase;
+    responseMeta.textContent = `Auto-discovered sample inputs via ${discoveredBase}.`;
   }
 
   renderTable();
@@ -233,15 +282,28 @@ async function runOne(endpointId) {
     });
 
     const latency = performance.now() - started;
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    const jsonContentType = isJsonContentType(contentType);
     let body;
+    let parseFailed = false;
 
-    try {
-      body = await response.json();
-    } catch {
-      body = { parseError: 'Response is not valid JSON.' };
+    if (jsonContentType) {
+      try {
+        body = await response.json();
+      } catch {
+        parseFailed = true;
+        body = { parseError: 'Response declared JSON but could not be parsed.' };
+      }
+    } else {
+      const textBody = await response.text();
+      body = {
+        parseError: `Expected JSON response, got '${contentType || 'unknown'}'.`,
+        preview: textBody.slice(0, 300),
+      };
     }
 
-    if (response.ok) {
+    const success = response.ok && jsonContentType && !parseFailed;
+    if (success) {
       setStatus(statusEl, 'ok', `${response.status}`);
     } else {
       setStatus(statusEl, 'err', `${response.status}`);
