@@ -1,7 +1,13 @@
 'use strict';
 
-const API        = 'https://apitest.deftrack.xyz/api';
 const REFRESH_MS = 30_000;
+const API_TIMEOUT_MS = 4_000;
+const API_CANDIDATES = Array.from(new Set([
+  'https://deftrack.xyz/api',
+  `${window.location.origin}/api`,
+  'https://apitest.deftrack.xyz/api',
+]));
+let activeApiBase = API_CANDIDATES[0];
 
 // ── Formatters ────────────────────────────────────────────────
 
@@ -71,10 +77,26 @@ function pct(n) {
 // ── API helper ────────────────────────────────────────────────
 
 async function get(path) {
-  const r = await fetch(`${API}${path}`);
-  if (!r.ok) throw new Error(`HTTP ${r.status} — ${path}`);
-  const j = await r.json();
-  return j.data;
+  const candidates = [activeApiBase, ...API_CANDIDATES.filter(base => base !== activeApiBase)];
+  let lastError = null;
+
+  for (const base of candidates) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+    try {
+      const r = await fetch(`${base}${path}`, { signal: controller.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      activeApiBase = base;
+      return j.data;
+    } catch (err) {
+      lastError = err;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new Error(`All API backends failed for ${path}: ${lastError?.message ?? 'unknown error'}`);
 }
 
 // ── Stats + Ticker ────────────────────────────────────────────
@@ -342,33 +364,70 @@ function setLastUpdate() {
   qs('#lastUpdate').textContent = new Date().toLocaleTimeString();
 }
 
+function showOfflineState(message) {
+  const txt = message || 'API unavailable';
+  const blocksBody = qs('#blocksBody');
+  const txsBody = qs('#txsBody');
+  const richBody = qs('#richBody');
+  const badge = qs('#blockBadge');
+
+  if (blocksBody) blocksBody.innerHTML = `<tr><td colspan="5" class="tloading">${txt}</td></tr>`;
+  if (txsBody) txsBody.innerHTML = `<tr><td colspan="5" class="tloading">${txt}</td></tr>`;
+  if (richBody) richBody.innerHTML = `<tr><td colspan="4" class="tloading">${txt}</td></tr>`;
+  if (badge) badge.textContent = 'Offline';
+}
+
 // ── Refresh cycle ─────────────────────────────────────────────
 
 async function refresh() {
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     loadStats(),
     loadBlocks(),
     loadTxs(),
     loadRichList(),
     loadMarket(),
   ]);
+
+  if (results.every(r => r.status === 'rejected')) {
+    showOfflineState('API timeout / unavailable');
+  }
+
   setLastUpdate();
 }
 
 // ── Init ──────────────────────────────────────────────────────
 
-qs('#searchForm').addEventListener('submit', e => {
-  e.preventDefault();
-  const val = qs('#searchInput').value.trim();
-  if (val) doSearch(val);
-});
+function initExplorer() {
+  const searchForm = qs('#searchForm');
+  const searchInput = qs('#searchInput');
+  const modal = qs('#modal');
+  const modalClose = qs('#modalClose');
+  const modalBackdrop = qs('#modalBackdrop');
 
-qs('#modalClose').addEventListener('click', () => qs('#modal').classList.add('hidden'));
-qs('#modalBackdrop').addEventListener('click', () => qs('#modal').classList.add('hidden'));
+  if (!searchForm || !searchInput || !modal || !modalClose || !modalBackdrop) {
+    console.error('Explorer init failed: missing required DOM elements.');
+    return;
+  }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') qs('#modal').classList.add('hidden');
-});
+  searchForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const val = searchInput.value.trim();
+    if (val) doSearch(val);
+  });
 
-refresh();
-setInterval(refresh, REFRESH_MS);
+  modalClose.addEventListener('click', () => modal.classList.add('hidden'));
+  modalBackdrop.addEventListener('click', () => modal.classList.add('hidden'));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') modal.classList.add('hidden');
+  });
+
+  refresh();
+  setInterval(refresh, REFRESH_MS);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initExplorer, { once: true });
+} else {
+  initExplorer();
+}
